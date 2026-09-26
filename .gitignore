@@ -1,0 +1,25 @@
+# Rust
+/target/
+**/target/
+
+# Node / Tauri UI
+node_modules/
+dist/
+.vite/
+
+# Android
+.gradle/
+local.properties
+build/
+*.apk
+*.aab
+captures/
+
+# macOS
+.DS_Store
+
+# Rahasia lokal: keypair host disimpan di keyring OS, tapi jangan sampai ada yang bocor ke repo
+*.pem
+*.p12
+.env
+.env.local

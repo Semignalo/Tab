@@ -1,0 +1,15 @@
+[package]
+name = "tab-probe"
+description = "Client uji baris perintah: discovery, pairing, dan pengukuran RTT tanpa perangkat fisik"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+tab-protocol.workspace = true
+serde.workspace = true
+serde_bytes.workspace = true
+ciborium.workspace = true
+tokio = { version = "1", features = ["full"] }
+thiserror.workspace = true

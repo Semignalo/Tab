@@ -1,0 +1,22 @@
+[package]
+name = "tab-protocol"
+description = "Tab wire protocol: messages, framing, discovery, and Noise sessions"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_bytes.workspace = true
+ciborium.workspace = true
+snow.workspace = true
+rand.workspace = true
+tokio.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+blake2 = "0.10"
+strum = { version = "0.27", features = ["derive"] }
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }

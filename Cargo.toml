@@ -1,0 +1,23 @@
+[workspace]
+# host/src-tauri ditambahkan setelah scaffold Tauri
+members = ["crates/tab-protocol", "crates/tab-probe"]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+rust-version = "1.82"
+
+[workspace.dependencies]
+tab-protocol = { path = "crates/tab-protocol" }
+serde = { version = "1", features = ["derive"] }
+serde_bytes = "0.11"
+ciborium = "0.2"
+snow = "0.9"
+rand = "0.8"
+tokio = { version = "1", features = ["rt-multi-thread", "net", "io-util", "macros", "time", "sync"] }
+thiserror = "2"
+tracing = "0.1"
+blake2 = "0.10"
+strum = { version = "0.27", features = ["derive"] }
