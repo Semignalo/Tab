@@ -313,6 +313,15 @@ async fn tick(iv: &mut Option<Interval>) {
     }
 }
 
+/// Clipboard OS bisa memblokir puluhan ms (jendela lain memegangnya); jangan di thread async.
+async fn clip_get(shared: &Arc<Shared>) -> Option<String> {
+    let sh = Arc::clone(shared);
+    tokio::task::spawn_blocking(move || sh.clipboard.lock().unwrap().get().ok())
+        .await
+        .ok()
+        .flatten()
+}
+
 fn new_interval(d: Duration) -> Interval {
     let mut i = interval(d);
     i.set_missed_tick_behavior(MissedTickBehavior::Skip);
@@ -468,7 +477,9 @@ impl Live {
             Message::ClipboardPush(c) => {
                 if c.s.len() <= MAX_CLIPBOARD {
                     self.last_clip = Some(hash_str(&c.s));
-                    let _ = shared.clipboard.lock().unwrap().set(&c.s);
+                    let sh = Arc::clone(shared);
+                    let text = c.s;
+                    let _ = tokio::task::spawn_blocking(move || sh.clipboard.lock().unwrap().set(&text)).await;
                 }
                 true
             }
@@ -538,8 +549,7 @@ impl Live {
         }
         match m {
             Mode::Trackpad => {
-                let cur = shared.clipboard.lock().unwrap().get().ok();
-                self.last_clip = cur.map(|s| hash_str(&s));
+                self.last_clip = clip_get(shared).await.map(|s| hash_str(&s));
                 let s = *shared.settings.borrow();
                 conn.send(Message::InputSettings(s)).await.is_some()
             }
@@ -660,7 +670,7 @@ impl Live {
     }
 
     async fn poll_clipboard(&mut self, shared: &Arc<Shared>, conn: &mut Conn) -> bool {
-        let Ok(text) = shared.clipboard.lock().unwrap().get() else {
+        let Some(text) = clip_get(shared).await else {
             return true;
         };
         let h = hash_str(&text);

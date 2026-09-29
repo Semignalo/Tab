@@ -27,6 +27,12 @@ keyring = { version = "3", features = ["windows-native"] }
 [target.'cfg(target_os = "macos")'.dependencies]
 keyring = { version = "3", features = ["apple-native"] }
 
+[dependencies.tracing-subscriber]
+version = "0.3"
+features = ["env-filter"]
+
+[dependencies.sysinfo]
+workspace = true
+
 [dev-dependencies]
-tracing-subscriber = "0.3"
 tab-probe = { path = "../tab-probe" }
