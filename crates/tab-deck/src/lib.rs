@@ -180,6 +180,90 @@ pub fn starter_profile() -> Profile {
     }
 }
 
+/// Pintasan umum ala Stream Deck. Modifier utama mengikuti OS: Ctrl di Windows, Cmd di macOS.
+pub fn shortcuts_profile() -> Profile {
+    let mac = cfg!(target_os = "macos");
+    let m = if mac { "meta" } else { "ctrl" };
+    let keys = |v: &[&str]| Action::Hotkey {
+        keys: v.iter().map(|s| (*s).to_owned()).collect(),
+    };
+    let items: Vec<(&str, &str, Action)> = vec![
+        ("Copy", "copy", keys(&[m, "c"])),
+        ("Paste", "paste", keys(&[m, "v"])),
+        ("Cut", "cut", keys(&[m, "x"])),
+        ("Undo", "undo", keys(&[m, "z"])),
+        (
+            "Redo",
+            "redo",
+            if mac {
+                keys(&["meta", "shift", "z"])
+            } else {
+                keys(&["ctrl", "y"])
+            },
+        ),
+        ("Select all", "select_all", keys(&[m, "a"])),
+        (
+            "Screenshot",
+            "screenshot",
+            if mac {
+                keys(&["meta", "shift", "4"])
+            } else {
+                keys(&["meta", "shift", "s"])
+            },
+        ),
+        (
+            "Kunci layar",
+            "lock",
+            if mac {
+                keys(&["ctrl", "meta", "q"])
+            } else {
+                keys(&["meta", "l"])
+            },
+        ),
+        (
+            "Task Manager",
+            "app",
+            if mac {
+                keys(&["meta", "alt", "esc"])
+            } else {
+                keys(&["ctrl", "shift", "esc"])
+            },
+        ),
+        (
+            "Desktop",
+            "folder",
+            if mac {
+                keys(&["f11"])
+            } else {
+                keys(&["meta", "d"])
+            },
+        ),
+        ("Tab baru", "browser", keys(&[m, "t"])),
+        ("Tutup tab", "stop", keys(&[m, "w"])),
+    ];
+    let mut buttons = Vec::new();
+    let mut actions = Vec::new();
+    for (i, (label, icon, action)) in items.into_iter().enumerate() {
+        let id = format!("b{i}");
+        buttons.push(ButtonDef {
+            index: i as u16,
+            label: label.into(),
+            icon: Some(icon.into()),
+            color: None,
+            action_id: id.clone(),
+        });
+        actions.push(ActionDef { id, action });
+    }
+    Profile {
+        id: "pintasan".into(),
+        name: "Pintasan".into(),
+        cols: 4,
+        rows: 3,
+        buttons,
+        actions,
+    }
+}
+
 // ------------------------------------------------------------- penyimpanan
 
 /// Satu file JSON per profil di sebuah folder.
@@ -195,6 +279,15 @@ impl JsonProfileStore {
         let mut store = Self { dir };
         if store.list()?.is_empty() {
             store.save(&starter_profile())?;
+        }
+        // Profil pintasan ditanam sekali (penanda berkas), supaya yang sudah dihapus atau
+        // diubah user tidak muncul lagi.
+        let marker = store.dir.join(".seeded-shortcuts-v1");
+        if !marker.exists() {
+            if store.load("pintasan")?.is_none() {
+                store.save(&shortcuts_profile())?;
+            }
+            let _ = std::fs::write(marker, b"");
         }
         Ok(store)
     }
@@ -311,8 +404,9 @@ mod tests {
     use super::*;
 
     #[test]
-    fn starter_profile_is_valid() {
+    fn starter_profiles_are_valid() {
         starter_profile().validate().unwrap();
+        shortcuts_profile().validate().unwrap();
     }
 
     #[test]
@@ -364,7 +458,11 @@ mod tests {
         let dir = std::env::temp_dir().join(format!("tab-deck-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         let mut store = JsonProfileStore::open(&dir).unwrap();
-        assert_eq!(store.list().unwrap().len(), 1, "profil awal ditanam");
+        assert_eq!(
+            store.list().unwrap().len(),
+            2,
+            "profil awal + pintasan ditanam"
+        );
 
         let mut p = starter_profile();
         p.id = "kerja".into();
@@ -373,7 +471,7 @@ mod tests {
         assert_eq!(store.load("kerja").unwrap().unwrap(), p);
 
         std::fs::write(dir.join("rusak.json"), "{bukan json").unwrap();
-        assert_eq!(store.list().unwrap().len(), 2, "file rusak dilewati");
+        assert_eq!(store.list().unwrap().len(), 3, "file rusak dilewati");
 
         store.delete("kerja").unwrap();
         assert!(store.load("kerja").unwrap().is_none());

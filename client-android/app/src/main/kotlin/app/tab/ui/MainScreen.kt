@@ -18,7 +18,6 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -46,6 +45,7 @@ import app.tab.feature.trackpad.TrackpadScreen
 import app.tab.model.Message
 import app.tab.model.Mode
 import app.tab.net.ClientState
+import app.tab.ui.kit.SegmentedTabs
 import kotlinx.coroutines.launch
 
 private val PAGE_ORDER = listOf(Mode.Trackpad, Mode.Deck, Mode.Monitor, Mode.Music, Mode.Clock)
@@ -175,7 +175,7 @@ private fun TopBar(
     onDisconnect: () -> Unit,
 ) {
     var menu by remember { mutableStateOf(false) }
-    Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             val dot = when {
                 rttMs == null -> Color(0xFF9E9E9E)
@@ -196,11 +196,7 @@ private fun TopBar(
                 }
             }
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            modes.forEachIndexed { i, m ->
-                FilterChip(selected = i == selected, onClick = { onSelect(i) }, label = { Text(label(m)) })
-            }
-        }
+        SegmentedTabs(modes.map { label(it) }, selected, onSelect)
     }
 }
 

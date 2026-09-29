@@ -27,6 +27,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.tab.net.PairResult
+import app.tab.ui.kit.headlineWithAccent
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -82,7 +83,12 @@ fun PairScreen(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("Pasangkan dengan $hostName", style = MaterialTheme.typography.headlineSmall, textAlign = TextAlign.Center)
+        Text(
+            headlineWithAccent("Pasangkan dengan ", hostName),
+            style = MaterialTheme.typography.headlineMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+            textAlign = TextAlign.Center,
+        )
         Text(
             "Ketik PIN 6 digit yang tampil di layar komputer.",
             Modifier.padding(top = 8.dp, bottom = 24.dp),

@@ -36,6 +36,12 @@ import app.tab.TabApplication
 import app.tab.net.ClientState
 import app.tab.net.DiscoveredHost
 import app.tab.net.HostRecord
+import app.tab.ui.kit.PillButton
+import app.tab.ui.kit.PillStyle
+import app.tab.ui.kit.headlineWithAccent
+import app.tab.ui.kit.tabCard
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.text.style.TextAlign
 import kotlinx.coroutines.launch
 
 @Composable
@@ -63,12 +69,22 @@ fun HostListScreen(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         item {
-            Column(Modifier.padding(top = 24.dp, bottom = 4.dp)) {
-                Text("Tab", style = MaterialTheme.typography.displaySmall)
+            Column(
+                Modifier.fillMaxWidth().padding(top = 40.dp, bottom = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
                 Text(
-                    "Pilih komputer yang ingin dikendalikan.",
-                    style = MaterialTheme.typography.bodyMedium,
+                    headlineWithAccent("Kendalikan ", "komputermu", "."),
+                    style = MaterialTheme.typography.displayMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    "Trackpad, deck tombol, monitor, dan musik — dari tablet atau HP, lewat Wi-Fi lokal.",
+                    style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center,
                 )
             }
         }
@@ -126,8 +142,8 @@ fun HostListScreen(
         }
 
         item {
-            OutlinedButton(onClick = { manualDialog = true }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 24.dp)) {
-                Text("Tambah lewat alamat IP")
+            Box(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 32.dp), contentAlignment = Alignment.Center) {
+                PillButton("Tambah lewat alamat IP", onClick = { manualDialog = true }, style = PillStyle.Quiet)
             }
         }
     }
@@ -155,14 +171,14 @@ fun HostListScreen(
 
 @Composable
 private fun SectionTitle(text: String) {
-    Text(text, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.padding(top = 10.dp))
+    Text(text, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(top = 18.dp, bottom = 2.dp))
 }
 
 @Composable
 private fun HostRow(title: String, subtitle: String, badge: String, onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceContainer)
-            .clickable(onClick = onClick).padding(16.dp),
+        Modifier.fillMaxWidth().tabCard(radius = 24.dp, elevation = 10.dp)
+            .clickable(onClick = onClick).padding(18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
@@ -177,7 +193,7 @@ private fun HostRow(title: String, subtitle: String, badge: String, onClick: () 
 private fun StoredRow(rec: HostRecord, onConnect: () -> Unit, onForget: () -> Unit) {
     var confirm by remember { mutableStateOf(false) }
     Row(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceContainerLow).padding(16.dp),
+        Modifier.fillMaxWidth().tabCard(radius = 24.dp, elevation = 6.dp).padding(18.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f).clickable(onClick = onConnect)) {

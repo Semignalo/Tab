@@ -41,6 +41,7 @@ kotlin {
 dependencies {
     implementation(project(":core:model"))
     implementation(project(":core:net"))
+    implementation(project(":core:ui"))
     implementation(project(":feature:trackpad"))
     implementation(project(":feature:deck"))
     implementation(project(":feature:monitor"))

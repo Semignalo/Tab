@@ -28,6 +28,7 @@ kotlin {
 
 dependencies {
     api(project(":core:model"))
+    api(project(":core:ui"))
     implementation(platform(libs.compose.bom))
     implementation(libs.compose.ui)
     implementation(libs.compose.foundation)

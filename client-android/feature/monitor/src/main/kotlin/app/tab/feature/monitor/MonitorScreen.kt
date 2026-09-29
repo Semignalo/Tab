@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.tab.model.Capabilities
 import app.tab.model.Message
+import app.tab.ui.kit.tabCard
 import java.util.Locale
 
 /**
@@ -46,9 +47,9 @@ fun MonitorScreen(metrics: Message.Metrics?, caps: Capabilities, modifier: Modif
     }
     Column(
         modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             GaugeCard("CPU", metrics.cpua, "${fmt1(metrics.cpua)}%", Modifier.weight(1f))
             val memPct = percent(metrics.mu, metrics.mt)
             GaugeCard("Memori", memPct, "${fmtBytes(metrics.mu)} / ${fmtBytes(metrics.mt)}", Modifier.weight(1f))
@@ -112,7 +113,7 @@ fun MonitorScreen(metrics: Message.Metrics?, caps: Capabilities, modifier: Modif
 @Composable
 private fun Card(title: String, content: @Composable () -> Unit) {
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.surfaceContainer).padding(14.dp),
+        Modifier.fillMaxWidth().tabCard(radius = 28.dp).padding(18.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         Text(title, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -125,7 +126,7 @@ private fun GaugeCard(title: String, pct: Float, caption: String, modifier: Modi
     val track = MaterialTheme.colorScheme.surfaceContainerHighest
     val color = gaugeColor(pct)
     Column(
-        modifier.clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.surfaceContainer).padding(14.dp),
+        modifier.tabCard(radius = 28.dp).padding(18.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {

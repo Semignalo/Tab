@@ -20,6 +20,7 @@ include(
     ":app",
     ":core:model",
     ":core:net",
+    ":core:ui",
     ":feature:trackpad",
     ":feature:deck",
     ":feature:monitor",

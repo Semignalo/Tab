@@ -8,7 +8,7 @@
 
   const ICONS = {
     skip_previous: "⏮", play_pause: "⏯", skip_next: "⏭", volume_up: "🔊", volume_down: "🔉",
-    volume_off: "🔇", copy: "⧉", paste: "📋", screenshot: "📷", mic: "🎙", record: "⏺",
+    volume_off: "🔇", copy: "⧉", cut: "✂", undo: "↶", redo: "↷", select_all: "▦", lock: "🔒", paste: "📋", screenshot: "📷", mic: "🎙", record: "⏺",
     stop: "⏹", browser: "🌐", folder: "📁", app: "▣", scene: "🎬",
   };
 

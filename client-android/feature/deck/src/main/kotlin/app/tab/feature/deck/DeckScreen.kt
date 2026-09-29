@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,6 +28,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.tab.model.Message
+import app.tab.ui.kit.IconSquircle
+import app.tab.ui.kit.PillChip
+import app.tab.ui.kit.tabCard
 
 /** Hasil aksi terakhir, `seq` naik setiap kali agar hasil identik tetap memicu ulang tampilan. */
 data class DeckFeedbackUi(val aid: String, val ok: Boolean, val message: String?, val seq: Long)
@@ -55,15 +57,11 @@ fun DeckScreen(
         }
     }
 
-    Column(modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         if (profiles != null && profiles.list.size > 1) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 for (p in profiles.list) {
-                    FilterChip(
-                        selected = p.id == profiles.active,
-                        onClick = { onSelectProfile(p.id) },
-                        label = { Text(p.name) },
-                    )
+                    PillChip(p.name, selected = p.id == profiles.active, onClick = { onSelectProfile(p.id) })
                 }
             }
         }
@@ -71,7 +69,7 @@ fun DeckScreen(
         val b = banner
         if (b != null) {
             val color = if (b.ok) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.errorContainer
-            Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(color).padding(10.dp)) {
+            Box(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(color).padding(horizontal = 16.dp, vertical = 12.dp)) {
                 Text(
                     if (b.ok) "✔ ${b.aid}" else "✘ ${b.message ?: "aksi gagal"}",
                     style = MaterialTheme.typography.bodyMedium,
@@ -95,9 +93,9 @@ fun DeckScreen(
 @Composable
 private fun DeckGrid(profile: Message.DeckProfile, onPress: (String, Int) -> Unit) {
     val byCell = profile.btns.associateBy { it.i }
-    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         repeat(profile.rows) { r ->
-            Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 repeat(profile.cols) { c ->
                     val cell = cellIndex(r, c, profile.cols)
                     val btn = byCell[cell]
@@ -112,20 +110,24 @@ private fun DeckGrid(profile: Message.DeckProfile, onPress: (String, Int) -> Uni
 
 @Composable
 private fun DeckTile(btn: app.tab.model.DeckButton, onPress: (String, Int) -> Unit) {
-    val base = parseColor(btn.col) ?: MaterialTheme.colorScheme.secondaryContainer
-    val fg = if (parseColor(btn.col) != null) readableOn(base) else MaterialTheme.colorScheme.onSecondaryContainer
+    val tint = parseColor(btn.col) ?: MaterialTheme.colorScheme.primary
     Box(
         Modifier
             .fillMaxSize()
-            .clip(RoundedCornerShape(20.dp))
-            .background(base)
+            .tabCard(radius = 28.dp)
             .clickable { onPress(btn.aid, btn.i) }
-            .padding(8.dp),
+            .padding(12.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(iconSymbol(btn.ic, btn.lbl), fontSize = 30.sp, color = fg)
-            Text(btn.lbl, color = fg, textAlign = TextAlign.Center, style = MaterialTheme.typography.labelLarge, maxLines = 2)
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            IconSquircle(iconSymbol(btn.ic, btn.lbl), tint, size = 64.dp)
+            Text(
+                btn.lbl,
+                color = MaterialTheme.colorScheme.onSurface,
+                textAlign = TextAlign.Center,
+                style = MaterialTheme.typography.titleSmall,
+                maxLines = 2,
+            )
         }
     }
 }
@@ -160,6 +162,11 @@ fun iconSymbol(name: String?, label: String): String = when (name) {
     "volume_down" -> "🔉"
     "volume_off", "mute" -> "🔇"
     "copy" -> "⧉"
+    "cut" -> "✂"
+    "undo" -> "↶"
+    "redo" -> "↷"
+    "select_all" -> "▦"
+    "lock" -> "🔒"
     "paste" -> "📋"
     "screenshot" -> "📷"
     "mic" -> "🎙"

@@ -16,7 +16,6 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
@@ -48,6 +47,8 @@ import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.unit.dp
 import app.tab.model.InputEvent
 import app.tab.model.ModifierBits
+import app.tab.ui.kit.PillSurface
+import app.tab.ui.kit.tabCard
 
 private const val SENTINEL = " "
 
@@ -90,7 +91,7 @@ fun TrackpadScreen(
     var mods by remember { mutableIntStateOf(0) }
     var showSettings by remember { mutableStateOf(false) }
 
-    Column(modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(modifier.fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             FilterChip(selected = keyboardOn, onClick = { keyboardOn = !keyboardOn }, label = { Text("Keyboard") })
             if (clipboardEnabled) {
@@ -124,12 +125,9 @@ fun TrackpadScreen(
 @Composable
 private fun TouchSurface(engine: GestureEngine, modifier: Modifier) {
     val density = LocalDensity.current.density
-    val outline = MaterialTheme.colorScheme.outlineVariant
     Box(
         modifier
-            .clip(RoundedCornerShape(24.dp))
-            .background(MaterialTheme.colorScheme.surfaceContainerLow)
-            .border(1.dp, outline, RoundedCornerShape(24.dp))
+            .tabCard(radius = 33.dp)
             .pointerInput(engine, density) {
                 awaitPointerEventScope {
                     while (true) {
@@ -162,7 +160,7 @@ private fun SettingsPanel(
 ) {
     var draft by remember(sensitivity) { mutableFloatStateOf(sensitivity) }
     Column(
-        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceContainer).padding(14.dp),
+        Modifier.fillMaxWidth().tabCard(radius = 24.dp, elevation = 10.dp).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Text("Kecepatan kursor  ×${"%.1f".format(draft)}", style = MaterialTheme.typography.labelLarge)
@@ -262,3 +260,12 @@ private fun GestureGuide(onDismiss: () -> Unit) {
         },
     )
 }
+
+/** Nama lama dipertahankan agar pemanggilnya tidak berubah; tampilannya kini pil Tab. */
+@Composable
+private fun FilterChip(
+    selected: Boolean,
+    onClick: () -> Unit,
+    label: @Composable () -> Unit,
+    enabled: Boolean = true,
+) = PillSurface(selected, onClick, enabled = enabled, content = label)
