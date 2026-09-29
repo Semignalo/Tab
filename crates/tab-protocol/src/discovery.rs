@@ -45,6 +45,9 @@ pub struct DiscoverResponse {
     pub port: u16,
     /// BLAKE2s dari static public key X25519 host.
     pub fp: ByteBuf,
+    /// Static public key X25519 host (32 byte). Client menghitung `BLAKE2s(pk)` dan menolak
+    /// bila tidak sama dengan `fp`; kunci inilah yang dipakai handshake `Noise_NK`.
+    pub pk: ByteBuf,
     /// `true` bila device_id pada permintaan sudah punya token di host ini.
     pub known: bool,
 }
@@ -115,6 +118,7 @@ mod tests {
             pmax: PROTOCOL_MAX,
             port: crate::SESSION_PORT,
             fp: ByteBuf::from(vec![7u8; 32]),
+            pk: ByteBuf::from(vec![8u8; 32]),
             known: true,
         }
     }

@@ -1,0 +1,32 @@
+[package]
+name = "tab-host"
+description = "Host Tab: discovery, listener, sesi, pairing, dan registry perangkat"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+tab-protocol.workspace = true
+tab-input.workspace = true
+tab-metrics.workspace = true
+tab-media.workspace = true
+tab-deck.workspace = true
+tokio = { workspace = true, features = ["full"] }
+rand.workspace = true
+serde.workspace = true
+serde_bytes.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+socket2 = { version = "0.5", features = ["all"] }
+
+[target.'cfg(windows)'.dependencies]
+keyring = { version = "3", features = ["windows-native"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", features = ["apple-native"] }
+
+[dev-dependencies]
+tracing-subscriber = "0.3"
+tab-probe = { path = "../tab-probe" }

@@ -1,0 +1,19 @@
+[package]
+name = "tab-input"
+description = "Lapisan input platform: pointer, scroll, keyboard, clipboard"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[dependencies]
+tab-protocol.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+arboard = { version = "3", default-features = false }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { workspace = true, features = ["Win32_UI_Input_KeyboardAndMouse", "Win32_UI_WindowsAndMessaging", "Win32_Foundation"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+core-graphics = "0.24"

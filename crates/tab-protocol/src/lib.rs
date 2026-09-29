@@ -9,6 +9,7 @@ pub mod frame;
 pub mod ids;
 pub mod message;
 pub mod noise;
+pub mod preamble;
 
 pub use ids::Id16;
 pub use message::Message;
