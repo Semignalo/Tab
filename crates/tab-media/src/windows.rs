@@ -85,7 +85,10 @@ impl MediaSource for WindowsMedia {
             .map_err(be)?;
         let title = props.Title().map(|s| s.to_string()).unwrap_or_default();
         let artist = props.Artist().map(|s| s.to_string()).unwrap_or_default();
-        let album = props.AlbumTitle().map(|s| s.to_string()).unwrap_or_default();
+        let album = props
+            .AlbumTitle()
+            .map(|s| s.to_string())
+            .unwrap_or_default();
         if title.is_empty() && artist.is_empty() {
             return Ok(None);
         }
@@ -112,7 +115,8 @@ impl MediaSource for WindowsMedia {
                             .duration_since(UNIX_EPOCH)
                             .map(|d| d.as_nanos() as i64 / 100 + WIN_TO_UNIX_TICKS)
                             .unwrap_or(0);
-                        let since = (now_win - updated.UniversalTime).clamp(0, 6 * 3_600 * 10_000_000);
+                        let since =
+                            (now_win - updated.UniversalTime).clamp(0, 6 * 3_600 * 10_000_000);
                         pos += since;
                     }
                 }

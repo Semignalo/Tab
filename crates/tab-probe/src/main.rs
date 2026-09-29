@@ -6,9 +6,7 @@ use std::time::{Duration, Instant};
 use tab_probe::discover::{discover, FoundHost};
 use tab_probe::stats::{count_gaps, summarize};
 use tab_probe::store::{default_path, from_hex, record, ProbeStore};
-use tab_probe::{
-    micros_since, Client, ClientError, Credential, DeviceInfo, Outcome, PinOutcome,
-};
+use tab_probe::{micros_since, Client, ClientError, Credential, DeviceInfo, Outcome, PinOutcome};
 use tab_protocol::message::*;
 use tab_protocol::noise::hex;
 use tab_protocol::Id16;
@@ -171,7 +169,11 @@ fn print_host(h: &FoundHost, store: &ProbeStore) {
         r.osv,
         h.addr,
         &hex(&r.fp)[..16],
-        if r.known { "[dikenal host]" } else { "[belum dipasangkan]" },
+        if r.known {
+            "[dikenal host]"
+        } else {
+            "[belum dipasangkan]"
+        },
         if mine { " [token lokal ada]" } else { "" },
     );
 }
@@ -206,7 +208,11 @@ async fn pair(
     };
     let candidates: Vec<&FoundHost> = found
         .iter()
-        .filter(|h| prefix.as_deref().is_none_or(|p| h.response.hid.to_hex().starts_with(p)))
+        .filter(|h| {
+            prefix
+                .as_deref()
+                .is_none_or(|p| h.response.hid.to_hex().starts_with(p))
+        })
         .collect();
     let host = match candidates.as_slice() {
         [h] => *h,
@@ -280,7 +286,10 @@ async fn connect_stored(store: &mut ProbeStore, prefix: Option<&str>) -> R<Clien
                     Ok(Outcome::Welcome(_)) => return Ok(c),
                     Ok(other) => return Err(format!("host menolak: {other:?}").into()),
                     Err(ClientError::Closed) | Err(ClientError::Timeout) => {
-                        return Err("host menutup koneksi: token kemungkinan dicabut — pairing ulang".into())
+                        return Err(
+                            "host menutup koneksi: token kemungkinan dicabut — pairing ulang"
+                                .into(),
+                        )
                     }
                     Err(e) => return Err(e.into()),
                 },
@@ -307,7 +316,8 @@ async fn connect_stored(store: &mut ProbeStore, prefix: Option<&str>) -> R<Clien
 
 async fn rtt(store: &mut ProbeStore, secs: u64, ping_hz: f64, host: Option<String>) -> R<()> {
     let mut c = connect_stored(store, host.as_deref()).await?;
-    c.send(&Message::SetMode(SetMode { m: Mode::Trackpad })).await?;
+    c.send(&Message::SetMode(SetMode { m: Mode::Trackpad }))
+        .await?;
 
     let start = Instant::now();
     let end = start + Duration::from_secs(secs);
@@ -356,13 +366,17 @@ async fn rtt(store: &mut ProbeStore, secs: u64, ping_hz: f64, host: Option<Strin
     println!("Pong hilang: {lost}");
     // Host tidak mengirim ulang seq; celah dihitung di sisi host lewat log. Di sini kita
     // hanya memastikan urutan kirim kita sendiri utuh.
-    println!("celah seq lokal: {}", count_gaps(&(1..=seq).collect::<Vec<_>>()));
+    println!(
+        "celah seq lokal: {}",
+        count_gaps(&(1..=seq).collect::<Vec<_>>())
+    );
     Ok(())
 }
 
 async fn input(store: &mut ProbeStore, pattern: Pattern, secs: u64, host: Option<String>) -> R<()> {
     let mut c = connect_stored(store, host.as_deref()).await?;
-    c.send(&Message::SetMode(SetMode { m: Mode::Trackpad })).await?;
+    c.send(&Message::SetMode(SetMode { m: Mode::Trackpad }))
+        .await?;
     println!("menggerakkan kursor host selama {secs}s …");
 
     let start = Instant::now();
@@ -378,13 +392,13 @@ async fn input(store: &mut ProbeStore, pattern: Pattern, secs: u64, host: Option
                 let ev = match pattern {
                     Pattern::Circle => {
                         // Lingkaran radius 150 px, 1 putaran/detik: kirim selisih posisi.
-                        let (x, y) = (150.0 * (t * 6.283).cos(), 150.0 * (t * 6.283).sin());
+                        let (x, y) = (150.0 * (t * std::f32::consts::TAU).cos(), 150.0 * (t * std::f32::consts::TAU).sin());
                         let d = InputEvent::PointerMove { dx: x - prev.0, dy: y - prev.1 };
                         prev = (x, y);
                         d
                     }
                     Pattern::Line => {
-                        let x = 200.0 * (t * 3.1415).sin();
+                        let x = 200.0 * (t * std::f32::consts::PI).sin();
                         let d = InputEvent::PointerMove { dx: x - prev.0, dy: 0.0 };
                         prev = (x, 0.0);
                         d

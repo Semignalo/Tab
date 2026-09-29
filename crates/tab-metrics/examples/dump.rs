@@ -21,7 +21,12 @@ fn main() {
             m.pwr.pct,
         );
         for d in &m.disks {
-            println!("   disk {} {:.1}/{:.1} GiB", d.n, d.u as f64 / 1073741824.0, d.t as f64 / 1073741824.0);
+            println!(
+                "   disk {} {:.1}/{:.1} GiB",
+                d.n,
+                d.u as f64 / 1073741824.0,
+                d.t as f64 / 1073741824.0
+            );
         }
     }
 }

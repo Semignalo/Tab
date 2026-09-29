@@ -1,0 +1,31 @@
+[package]
+name = "tab-desktop"
+description = "Shell desktop Tab: tray, jendela pairing, daftar perangkat"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+
+[[bin]]
+name = "tab"
+path = "src/main.rs"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-autostart = "2"
+tauri-plugin-single-instance = "2"
+tab-protocol.workspace = true
+tab-host.workspace = true
+tab-input.workspace = true
+tab-metrics.workspace = true
+tab-media.workspace = true
+tab-deck.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tokio = { workspace = true, features = ["full"] }
+tracing.workspace = true
+sysinfo.workspace = true
+if-addrs = "0.13"

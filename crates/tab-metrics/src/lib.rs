@@ -114,7 +114,8 @@ impl MetricsSource for SysMetrics {
 
     fn sample(&mut self) -> Result<Metrics, MetricsError> {
         self.sys.refresh_cpu_usage();
-        self.sys.refresh_memory_specifics(MemoryRefreshKind::everything());
+        self.sys
+            .refresh_memory_specifics(MemoryRefreshKind::everything());
         self.nets.refresh(true);
         self.disks.refresh(true);
 
@@ -194,9 +195,12 @@ fn read_power() -> Power {
         .map(|o| String::from_utf8_lossy(&o.stdout).into_owned())
         .unwrap_or_default();
     let ac = !out.contains("Battery Power");
-    let pct = out
-        .split_whitespace()
-        .find_map(|w| w.trim_end_matches([';', '%']).parse::<u8>().ok().filter(|_| w.contains('%')));
+    let pct = out.split_whitespace().find_map(|w| {
+        w.trim_end_matches([';', '%'])
+            .parse::<u8>()
+            .ok()
+            .filter(|_| w.contains('%'))
+    });
     Power { ac, pct }
 }
 

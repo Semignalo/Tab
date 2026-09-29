@@ -7,7 +7,10 @@ use std::path::{Path, PathBuf};
 use tab_protocol::message::{LyricLine, MediaCmd, NowPlaying};
 use thiserror::Error;
 
+mod jxa;
 mod lrc;
+#[cfg(target_os = "macos")]
+mod macos;
 #[cfg(windows)]
 mod windows;
 
@@ -48,6 +51,11 @@ pub fn platform_media() -> Box<dyn MediaSource> {
             Err(e) => tracing::warn!("media Windows tidak tersedia: {e}"),
         }
     }
+    #[cfg(target_os = "macos")]
+    {
+        return Box::new(macos::MacMedia::new());
+    }
+    #[cfg(not(target_os = "macos"))]
     Box::new(UnavailableMedia)
 }
 

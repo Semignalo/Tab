@@ -1,0 +1,60 @@
+name: Release
+
+# Jalankan dengan menandai versi: git tag v0.1.0 && git push --tags
+on:
+  push:
+    tags: ["v*"]
+
+jobs:
+  desktop:
+    name: Desktop (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci || npm install
+        working-directory: host
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # macOS: penandatanganan + notarisasi. Bila secret kosong, DMG tetap dibuat tanpa tanda tangan.
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          projectPath: host
+          tagName: ${{ github.ref_name }}
+          releaseName: Tab ${{ github.ref_name }}
+          releaseDraft: true
+          prerelease: false
+
+  android:
+    name: Android APK
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - run: cargo build -p tab-host --bins
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - working-directory: client-android
+        run: ./gradlew test :app:assembleRelease --console=plain
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tab-android-release
+          path: client-android/app/build/outputs/apk/release/*.apk

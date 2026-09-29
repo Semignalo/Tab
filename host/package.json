@@ -1,0 +1,12 @@
+{
+  "name": "tab-host-ui",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "tauri": "tauri",
+    "test": "node --test tests/deck-logic.test.js"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2"
+  }
+}

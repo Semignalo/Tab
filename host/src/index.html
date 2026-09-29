@@ -1,0 +1,138 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tab</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main>
+    <header>
+      <div>
+        <h1>Tab</h1>
+        <p id="host-line" class="muted">Memulai…</p>
+      </div>
+      <span id="pill" class="pill">…</span>
+    </header>
+
+    <div id="error" class="banner error" hidden></div>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Perangkat</h2>
+        <button id="pair-btn" class="primary">Pair perangkat baru</button>
+      </div>
+      <ul id="devices" class="list"></ul>
+      <p id="devices-empty" class="muted" hidden>Belum ada perangkat. Klik “Pair perangkat baru”, lalu buka aplikasi Tab di HP.</p>
+    </section>
+
+    <section class="card" id="deck-card">
+      <div class="card-head">
+        <h2>Deck</h2>
+        <div class="actions" style="margin:0">
+          <select id="deck-select" aria-label="Profil deck"></select>
+          <button id="deck-new">Baru</button>
+          <button id="deck-delete" class="danger">Hapus</button>
+        </div>
+      </div>
+      <div class="row">
+        <label class="grow-input">Nama <input id="deck-name" type="text" maxlength="40" /></label>
+        <label>Kolom <input id="deck-cols" type="number" min="1" max="8" /></label>
+        <label>Baris <input id="deck-rows" type="number" min="1" max="8" /></label>
+      </div>
+      <div id="deck-grid" class="deck-grid" aria-label="Grid deck"></div>
+      <p class="muted">Klik sel untuk mengubah; seret sel untuk menukar posisi.</p>
+
+      <div id="cell-editor" class="cell-editor" hidden>
+        <div class="row">
+          <label class="grow-input">Label <input id="cell-label" type="text" maxlength="24" /></label>
+          <label>Warna <input id="cell-color" type="color" value="#334155" /></label>
+          <label><input id="cell-color-on" type="checkbox" /> pakai</label>
+        </div>
+        <label class="col">Ikon
+          <input id="cell-icon" type="text" list="icon-list" placeholder="mis. mic, copy, browser" />
+        </label>
+        <datalist id="icon-list">
+          <option value="skip_previous"></option><option value="play_pause"></option><option value="skip_next"></option>
+          <option value="volume_up"></option><option value="volume_down"></option><option value="volume_off"></option>
+          <option value="copy"></option><option value="paste"></option><option value="screenshot"></option>
+          <option value="mic"></option><option value="record"></option><option value="stop"></option>
+          <option value="browser"></option><option value="folder"></option><option value="app"></option><option value="scene"></option>
+        </datalist>
+        <label class="col">Aksi
+          <select id="cell-type"></select>
+        </label>
+        <div id="cell-value-wrap" class="col"></div>
+        <p id="cell-error" class="banner error" hidden></p>
+        <div class="actions">
+          <button id="cell-remove" class="danger">Hapus sel</button>
+          <button id="cell-apply" class="primary">Terapkan</button>
+        </div>
+      </div>
+
+      <div class="actions">
+        <span id="deck-msg" class="muted"></span>
+        <button id="deck-save" class="primary">Simpan profil</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Setelan</h2>
+      <label class="row">
+        <span>Kecepatan kursor <b id="sens-val">×1.0</b></span>
+        <input id="sens" type="range" min="0.3" max="3" step="0.1" value="1" />
+      </label>
+      <label class="row">
+        <span>Scroll natural (konten mengikuti jari)</span>
+        <input id="natural" type="checkbox" />
+      </label>
+      <label class="col">
+        <span>Folder lirik (.lrc) <span class="muted">— opsional, milik Anda sendiri</span></span>
+        <input id="lyrics" type="text" placeholder="mis. C:\Musik\Lirik" spellcheck="false" />
+      </label>
+      <label class="row">
+        <span>Integrasi OBS <span class="muted">(aksi “Scene OBS” di deck)</span></span>
+        <input id="obs-enabled" type="checkbox" />
+      </label>
+      <div id="obs-fields" class="row" hidden>
+        <label class="grow-input">Alamat <input id="obs-host" type="text" placeholder="127.0.0.1" spellcheck="false" /></label>
+        <label>Port <input id="obs-port" type="number" min="1" max="65535" style="width:84px" /></label>
+        <label class="grow-input">Password <input id="obs-password" type="password" placeholder="(biarkan kosong = tidak diubah)" autocomplete="off" /></label>
+        <button id="obs-test" type="button">Uji</button>
+      </div>
+      <label class="row">
+        <span>Jalankan saat login (di tray)</span>
+        <input id="autostart" type="checkbox" />
+      </label>
+      <div class="actions">
+        <span id="settings-msg" class="muted"></span>
+        <button id="save-settings">Simpan</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Koneksi &amp; izin</h2>
+        <button id="recheck">Periksa lagi</button>
+      </div>
+      <ul id="checks" class="list"></ul>
+      <p id="addresses" class="muted"></p>
+    </section>
+  </main>
+
+  <dialog id="pair-dialog">
+    <h2>Pasangkan perangkat</h2>
+    <p class="muted">Buka Tab di HP, pilih komputer ini, lalu ketik PIN:</p>
+    <div id="pin" class="pin">------</div>
+    <p id="pin-status" class="muted"></p>
+    <div class="actions">
+      <button id="pair-cancel">Batal</button>
+    </div>
+  </dialog>
+
+  <script src="deck-logic.js"></script>
+  <script src="deck-editor.js"></script>
+  <script src="main.js"></script>
+</body>
+</html>

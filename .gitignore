@@ -23,3 +23,5 @@ captures/
 *.p12
 .env
 .env.local
+/host/node_modules/
+/host/src-tauri/gen/

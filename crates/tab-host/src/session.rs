@@ -152,8 +152,11 @@ async fn session_body(
         return None;
     }
     if !tab_protocol::version_supported(hello.pv) {
-        conn.send_error(ErrorCode::ProtocolUnsupported, "versi protokol tidak didukung")
-            .await;
+        conn.send_error(
+            ErrorCode::ProtocolUnsupported,
+            "versi protokol tidak didukung",
+        )
+        .await;
         return None;
     }
 
@@ -164,7 +167,13 @@ async fn session_body(
         shared.registry.touch(dev);
     }
 
-    // 6. Welcome: sesi resmi berdiri.
+    // 6. Welcome: sesi resmi berdiri. `obs` dihitung saat ini juga: capability itu hanya jujur
+    //    bila OBS memang sedang menjawab (uji singkat, di-cache 5 detik).
+    let mut caps = shared.caps.clone();
+    let obs = Arc::clone(&shared.obs);
+    caps.obs = tokio::task::spawn_blocking(move || obs.available())
+        .await
+        .unwrap_or(false);
     conn.send(Message::Welcome(Welcome {
         pv: PROTOCOL_VERSION,
         hid: shared.host_id,
@@ -173,7 +182,7 @@ async fn session_body(
         osv: shared.cfg.os_version.clone(),
         app: shared.cfg.app_version.clone(),
         sid: Id16::random(),
-        caps: shared.caps.clone(),
+        caps,
     }))
     .await?;
 
@@ -240,8 +249,11 @@ async fn pair(shared: &Arc<Shared>, conn: &mut Conn, hello: &Hello) -> Option<()
                         }
                     }
                     crate::pairing::Verify::Expired => {
-                        conn.send_error(ErrorCode::PinExpired, "PIN kedaluwarsa atau sudah terpakai")
-                            .await;
+                        conn.send_error(
+                            ErrorCode::PinExpired,
+                            "PIN kedaluwarsa atau sudah terpakai",
+                        )
+                        .await;
                         return None;
                     }
                 }
@@ -432,7 +444,13 @@ impl Live {
         match msg {
             Message::Ping(p) => {
                 let th = shared.start.elapsed().as_micros() as u64;
-                conn.send(Message::Pong(Pong { n: p.n, tc: p.tc, th })).await.is_some()
+                conn.send(Message::Pong(Pong {
+                    n: p.n,
+                    tc: p.tc,
+                    th,
+                }))
+                .await
+                .is_some()
             }
             Message::Bye(_) => false,
             Message::SetMode(s) => self.set_mode(shared, conn, s.m).await,
@@ -479,16 +497,17 @@ impl Live {
                     self.last_clip = Some(hash_str(&c.s));
                     let sh = Arc::clone(shared);
                     let text = c.s;
-                    let _ = tokio::task::spawn_blocking(move || sh.clipboard.lock().unwrap().set(&text)).await;
+                    let _ = tokio::task::spawn_blocking(move || {
+                        sh.clipboard.lock().unwrap().set(&text)
+                    })
+                    .await;
                 }
                 true
             }
             Message::SelectProfile(s) => self.select_profile(shared, conn, s.id).await,
             Message::DeckPress(p) => self.deck_press(shared, conn, p).await,
             Message::DeckRelease(_) => true,
-            Message::MediaCommand(c) => {
-                self.media_op(shared, conn, move |m| m.command(c.c)).await
-            }
+            Message::MediaCommand(c) => self.media_op(shared, conn, move |m| m.command(c.c)).await,
             Message::MediaSeek(s) => {
                 if !shared.caps.media_seek {
                     return conn
@@ -715,10 +734,10 @@ impl Live {
         artist: &str,
         title: &str,
     ) -> Option<Arc<Vec<LyricLine>>> {
-        let dir = shared.cfg.lyrics_dir.as_ref()?;
+        let dir = shared.lyrics_dir.lock().unwrap().clone()?;
         let key = format!("{artist}\u{0}{title}");
         if self.lyrics_key.as_deref() != Some(key.as_str()) {
-            self.lyrics = load_lyrics(dir, artist, title).map(Arc::new);
+            self.lyrics = load_lyrics(&dir, artist, title).map(Arc::new);
             self.lyrics_key = Some(key);
         }
         self.lyrics.clone()
@@ -748,7 +767,10 @@ impl Live {
                 .send_error(ErrorCode::Unsupported, &e.to_string())
                 .await
                 .is_some(),
-            Err(_) => conn.send_error(ErrorCode::Internal, "media gagal").await.is_some(),
+            Err(_) => conn
+                .send_error(ErrorCode::Internal, "media gagal")
+                .await
+                .is_some(),
         }
     }
 
@@ -768,12 +790,13 @@ impl Live {
         };
         let n = bytes.chunks(ART_CHUNK).count().min(u16::MAX as usize) as u16;
         for (i, part) in bytes.chunks(ART_CHUNK).take(n as usize).enumerate() {
-            self.art_queue.push_back(Message::ArtworkChunk(ArtworkChunk {
-                id: id.clone(),
-                i: i as u16,
-                n,
-                b: serde_bytes::ByteBuf::from(part.to_vec()),
-            }));
+            self.art_queue
+                .push_back(Message::ArtworkChunk(ArtworkChunk {
+                    id: id.clone(),
+                    i: i as u16,
+                    n,
+                    b: serde_bytes::ByteBuf::from(part.to_vec()),
+                }));
         }
         true
     }
@@ -830,7 +853,10 @@ impl Live {
             })
             .collect();
         if conn
-            .send(Message::DeckProfiles(DeckProfiles { list: refs, active: active.clone() }))
+            .send(Message::DeckProfiles(DeckProfiles {
+                list: refs,
+                active: active.clone(),
+            }))
             .await
             .is_none()
         {
@@ -884,8 +910,12 @@ impl Live {
             Ok(Err(e)) => (false, Some(e.to_string())),
             Err(_) => (false, Some("aksi gagal".into())),
         };
-        conn.send(Message::DeckFeedback(DeckFeedback { aid: p.aid, ok, msg }))
-            .await
-            .is_some()
+        conn.send(Message::DeckFeedback(DeckFeedback {
+            aid: p.aid,
+            ok,
+            msg,
+        }))
+        .await
+        .is_some()
     }
 }

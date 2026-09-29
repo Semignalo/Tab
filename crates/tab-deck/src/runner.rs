@@ -1,7 +1,8 @@
 //! Eksekusi aksi di mesin host.
 
-use crate::{Action, ActionError, ActionRunner};
+use crate::{Action, ActionError, ActionRunner, ObsHandle};
 use std::process::{Command, Stdio};
+use std::sync::Arc;
 use std::time::Duration;
 use tab_input::PlatformInput;
 
@@ -12,11 +13,21 @@ const MAX_DEPTH: usize = 4;
 
 pub struct SystemRunner {
     input: Box<dyn PlatformInput>,
+    obs: Arc<ObsHandle>,
 }
 
 impl SystemRunner {
     pub fn new(input: Box<dyn PlatformInput>) -> Self {
-        Self { input }
+        Self {
+            input,
+            obs: Arc::new(ObsHandle::new()),
+        }
+    }
+
+    /// Pakai pegangan OBS bersama (yang juga dibaca host untuk kapabilitas `obs`).
+    pub fn with_obs(mut self, obs: Arc<ObsHandle>) -> Self {
+        self.obs = obs;
+        self
     }
 
     fn run_depth(&mut self, action: &Action, depth: usize) -> Result<(), ActionError> {
@@ -37,9 +48,16 @@ impl SystemRunner {
                 }
                 open_target(url)
             }
-            Action::ObsScene { .. } => Err(ActionError::Unsupported(
-                "OBS tidak tersambung".into(),
-            )),
+            Action::ObsScene { scene } => {
+                if !self.obs.is_configured() {
+                    return Err(ActionError::Unsupported(
+                        "OBS belum dikonfigurasi di setelan Tab".into(),
+                    ));
+                }
+                self.obs
+                    .set_scene(scene)
+                    .map_err(|e| ActionError::Failed(e.to_string()))
+            }
             Action::Multi { steps } => {
                 for (i, step) in steps.iter().enumerate() {
                     if i > 0 {
@@ -160,7 +178,11 @@ mod tests {
     #[test]
     fn non_web_urls_are_refused() {
         let (mut r, _) = runner();
-        for bad in ["file:///C:/Windows/System32/calc.exe", "javascript:alert(1)", "calc.exe"] {
+        for bad in [
+            "file:///C:/Windows/System32/calc.exe",
+            "javascript:alert(1)",
+            "calc.exe",
+        ] {
             assert!(
                 matches!(
                     r.run(&Action::OpenUrl { url: bad.into() }),
@@ -181,7 +203,10 @@ mod tests {
             ],
         });
         assert!(res.is_err());
-        assert!(log.lock().unwrap().is_empty(), "langkah kedua tidak boleh jalan");
+        assert!(
+            log.lock().unwrap().is_empty(),
+            "langkah kedua tidak boleh jalan"
+        );
     }
 
     #[test]

@@ -1,6 +1,7 @@
 [workspace]
 # host/src-tauri ditambahkan setelah scaffold Tauri
 members = [
+    "host/src-tauri",
     "crates/tab-deck",
     "crates/tab-host",
     "crates/tab-input",

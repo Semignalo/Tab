@@ -50,14 +50,23 @@ impl Rig {
     }
 
     async fn connect(&self, dev: Id16, cred: Credential) -> Result<Client, ClientError> {
-        Client::connect(self.addr(), &self.host.public_key(), DeviceInfo::probe(dev), cred).await
+        Client::connect(
+            self.addr(),
+            &self.host.public_key(),
+            DeviceInfo::probe(dev),
+            cred,
+        )
+        .await
     }
 
     /// Pairing penuh; mengembalikan client yang sudah `Welcome` beserta tokennya.
     async fn pair(&self, dev: Id16) -> (Client, [u8; 32]) {
         let ticket = self.host.begin_pairing().await.unwrap();
         let mut c = self.connect(dev, Credential::Pair).await.unwrap();
-        assert!(matches!(c.hello().await.unwrap(), Outcome::PairRequired { .. }));
+        assert!(matches!(
+            c.hello().await.unwrap(),
+            Outcome::PairRequired { .. }
+        ));
         match c.submit_pin(&ticket.pin).await.unwrap() {
             PinOutcome::Paired { token, .. } => (c, token),
             other => panic!("pairing gagal: {other:?}"),
@@ -87,7 +96,10 @@ async fn wait_for<T>(c: &mut Client, mut f: impl FnMut(Message) -> Option<T>) ->
     let deadline = tokio::time::Instant::now() + Duration::from_secs(5);
     loop {
         let left = deadline.saturating_duration_since(tokio::time::Instant::now());
-        let m = c.recv_timeout(left).await.expect("pesan yang ditunggu tidak datang");
+        let m = c
+            .recv_timeout(left)
+            .await
+            .expect("pesan yang ditunggu tidak datang");
         if let Some(v) = f(m) {
             return v;
         }
@@ -153,10 +165,17 @@ async fn pairing_without_open_window_is_busy() {
 async fn five_wrong_pins_cancel_pairing_and_sixth_is_expired_not_invalid() {
     let r = rig().await;
     let ticket = r.host.begin_pairing().await.unwrap();
-    let wrong = if ticket.pin == "000000" { "111111" } else { "000000" };
+    let wrong = if ticket.pin == "000000" {
+        "111111"
+    } else {
+        "000000"
+    };
 
     let mut c = r.connect(Id16::random(), Credential::Pair).await.unwrap();
-    assert!(matches!(c.hello().await.unwrap(), Outcome::PairRequired { .. }));
+    assert!(matches!(
+        c.hello().await.unwrap(),
+        Outcome::PairRequired { .. }
+    ));
     for expected_left in (0..5u8).rev() {
         match c.submit_pin(wrong).await.unwrap() {
             PinOutcome::Invalid { attempts_left } => assert_eq!(attempts_left, expected_left),
@@ -183,8 +202,14 @@ async fn pin_is_single_use_across_two_devices() {
 
     let mut a = r.connect(Id16::random(), Credential::Pair).await.unwrap();
     let mut b = r.connect(Id16::random(), Credential::Pair).await.unwrap();
-    assert!(matches!(a.hello().await.unwrap(), Outcome::PairRequired { .. }));
-    assert!(matches!(b.hello().await.unwrap(), Outcome::PairRequired { .. }));
+    assert!(matches!(
+        a.hello().await.unwrap(),
+        Outcome::PairRequired { .. }
+    ));
+    assert!(matches!(
+        b.hello().await.unwrap(),
+        Outcome::PairRequired { .. }
+    ));
 
     assert!(matches!(
         a.submit_pin(&ticket.pin).await.unwrap(),
@@ -243,7 +268,10 @@ async fn reconnect_with_revoked_token_fails_and_client_must_pair_again() {
     let res = r.connect(dev, Credential::Resume(token)).await;
     match res {
         Err(_) => {}
-        Ok(mut c) => assert!(c.hello().await.is_err(), "resume dengan token dicabut harus gagal"),
+        Ok(mut c) => assert!(
+            c.hello().await.is_err(),
+            "resume dengan token dicabut harus gagal"
+        ),
     }
 
     // Jalur pairing ulang tetap terbuka.
@@ -319,7 +347,10 @@ async fn silent_client_is_timed_out() {
         }
     }
     let waited = start.elapsed();
-    assert!(waited >= Duration::from_secs(5) && waited < Duration::from_secs(8), "{waited:?}");
+    assert!(
+        waited >= Duration::from_secs(5) && waited < Duration::from_secs(8),
+        "{waited:?}"
+    );
 }
 
 #[tokio::test]
@@ -347,7 +378,10 @@ async fn closing_session_releases_all_held_input() {
         s: 1,
         ev: vec![
             InputEvent::Modifiers { m: modifiers::CTRL },
-            InputEvent::PointerButton { b: Button::L, d: true },
+            InputEvent::PointerButton {
+                b: Button::L,
+                d: true,
+            },
         ],
     }))
     .await
@@ -360,7 +394,11 @@ async fn closing_session_releases_all_held_input() {
     let log = r.input_log.lock().unwrap().clone();
     assert!(log.contains(&Call::Key("ctrl".into(), true)));
     assert!(log.contains(&Call::Button(Button::L, true)));
-    assert_eq!(log.last(), Some(&Call::ReleaseAll), "release_all harus terpanggil: {log:?}");
+    assert_eq!(
+        log.last(),
+        Some(&Call::ReleaseAll),
+        "release_all harus terpanggil: {log:?}"
+    );
 }
 
 #[tokio::test]
@@ -422,7 +460,10 @@ async fn pointer_input_is_scaled_by_host_sensitivity_and_scroll_follows_directio
                 ph: ScrollPhase::U,
                 mom: false,
             },
-            InputEvent::PointerMove { dx: f32::NAN, dy: 0.0 },
+            InputEvent::PointerMove {
+                dx: f32::NAN,
+                dy: 0.0,
+            },
         ],
     }))
     .await
@@ -467,34 +508,39 @@ async fn telemetry_flows_only_while_monitor_mode_is_active() {
         "telemetri tidak boleh mengalir di luar mode Monitor"
     );
 
-    c.send(&Message::SetMode(SetMode { m: Mode::Monitor })).await.unwrap();
+    c.send(&Message::SetMode(SetMode { m: Mode::Monitor }))
+        .await
+        .unwrap();
     let m = wait_for(&mut c, |m| match m {
         Message::Metrics(m) => Some(m),
         _ => None,
     })
     .await;
     assert!(!m.cpu.is_empty());
-    assert!(m.tcpu.is_none() && m.gpu.is_none(), "tidak ada nilai placeholder");
+    assert!(
+        m.tcpu.is_none() && m.gpu.is_none(),
+        "tidak ada nilai placeholder"
+    );
 
     // Pindah mode → telemetri berhenti.
-    c.send(&Message::SetMode(SetMode { m: Mode::Clock })).await.unwrap();
+    c.send(&Message::SetMode(SetMode { m: Mode::Clock }))
+        .await
+        .unwrap();
     wait_for(&mut c, |m| match m {
         Message::ModeState(s) if s.m == Mode::Clock && s.ok => Some(()),
         _ => None,
     })
     .await;
     while c.recv_timeout(Duration::from_millis(100)).await.is_ok() {}
-    assert!(
-        tokio::time::timeout(Duration::from_millis(700), async {
-            loop {
-                if let Ok(Message::Metrics(_)) = c.recv().await {
-                    return;
-                }
+    assert!(tokio::time::timeout(Duration::from_millis(700), async {
+        loop {
+            if let Ok(Message::Metrics(_)) = c.recv().await {
+                return;
             }
-        })
-        .await
-        .is_err()
-    );
+        }
+    })
+    .await
+    .is_err());
 }
 
 #[tokio::test]
@@ -502,7 +548,9 @@ async fn unavailable_mode_is_rejected_honestly() {
     let r = rig_with(cfg()).await;
     let (mut c, _t) = r.pair(Id16::random()).await;
     // FakeMedia melaporkan now_playing=true, jadi Music ada; Idle selalu boleh.
-    c.send(&Message::SetMode(SetMode { m: Mode::Idle })).await.unwrap();
+    c.send(&Message::SetMode(SetMode { m: Mode::Idle }))
+        .await
+        .unwrap();
     let ok = wait_for(&mut c, |m| match m {
         Message::ModeState(s) => Some(s.ok),
         _ => None,
@@ -516,7 +564,9 @@ async fn deck_only_fires_actions_wired_to_buttons_of_the_active_profile() {
     let r = rig().await;
     let (mut c, _t) = r.pair(Id16::random()).await;
 
-    c.send(&Message::SetMode(SetMode { m: Mode::Deck })).await.unwrap();
+    c.send(&Message::SetMode(SetMode { m: Mode::Deck }))
+        .await
+        .unwrap();
     let profile = wait_for(&mut c, |m| match m {
         Message::DeckProfile(p) => Some(p),
         _ => None,
@@ -525,9 +575,12 @@ async fn deck_only_fires_actions_wired_to_buttons_of_the_active_profile() {
     assert_eq!(profile.btns.len(), 6);
     let play = profile.btns.iter().find(|b| b.aid == "play").unwrap();
 
-    c.send(&Message::DeckPress(DeckPress { aid: "play".into(), i: play.i }))
-        .await
-        .unwrap();
+    c.send(&Message::DeckPress(DeckPress {
+        aid: "play".into(),
+        i: play.i,
+    }))
+    .await
+    .unwrap();
     let fb = wait_for(&mut c, |m| match m {
         Message::DeckFeedback(f) => Some(f),
         _ => None,
@@ -536,12 +589,16 @@ async fn deck_only_fires_actions_wired_to_buttons_of_the_active_profile() {
     assert!(fb.ok);
     assert_eq!(
         r.ran.lock().unwrap().as_slice(),
-        [Action::MediaKey { key: "media_play".into() }]
+        [Action::MediaKey {
+            key: "media_play".into()
+        }]
     );
 
     // aid yang tidak ada di profil, dan aid benar dengan indeks sel salah, keduanya ditolak.
     for (aid, i) in [("rm-rf", 0u16), ("play", 5u16)] {
-        c.send(&Message::DeckPress(DeckPress { aid: aid.into(), i })).await.unwrap();
+        c.send(&Message::DeckPress(DeckPress { aid: aid.into(), i }))
+            .await
+            .unwrap();
         let fb = wait_for(&mut c, |m| match m {
             Message::DeckFeedback(f) => Some(f),
             _ => None,
@@ -556,9 +613,11 @@ async fn deck_only_fires_actions_wired_to_buttons_of_the_active_profile() {
 async fn artwork_is_chunked_within_the_frame_budget() {
     let r = rig().await;
     let (mut c, _t) = r.pair(Id16::random()).await;
-    c.send(&Message::GetArtwork(GetArtwork { id: "fake-art".into() }))
-        .await
-        .unwrap();
+    c.send(&Message::GetArtwork(GetArtwork {
+        id: "fake-art".into(),
+    }))
+    .await
+    .unwrap();
 
     let mut total = 0usize;
     let mut expected_n = None;
@@ -599,12 +658,19 @@ async fn discovery_answers_valid_requests_and_marks_known_devices() {
     let found = tab_probe::discover::discover_at(dev, &[target], Duration::from_millis(800))
         .await
         .unwrap();
-    assert!(found[0].response.known, "perangkat yang sudah dipasangkan ditandai");
+    assert!(
+        found[0].response.known,
+        "perangkat yang sudah dipasangkan ditandai"
+    );
 
-    let other = tab_probe::discover::discover_at(Id16::random(), &[target], Duration::from_millis(800))
-        .await
-        .unwrap();
-    assert!(!other[0].response.known, "known tidak bocor ke perangkat lain");
+    let other =
+        tab_probe::discover::discover_at(Id16::random(), &[target], Duration::from_millis(800))
+            .await
+            .unwrap();
+    assert!(
+        !other[0].response.known,
+        "known tidak bocor ke perangkat lain"
+    );
 }
 
 #[tokio::test]
@@ -614,11 +680,12 @@ async fn discovery_ignores_foreign_and_wrong_version_datagrams() {
     let target = r.host.discovery_addr();
 
     sock.send_to(b"hello world", target).await.unwrap();
-    let mut bad_version = tab_protocol::discovery::encode_request(&tab_protocol::discovery::DiscoverRequest {
-        dev: Id16::random(),
-        pv: 99,
-    })
-    .unwrap();
+    let mut bad_version =
+        tab_protocol::discovery::encode_request(&tab_protocol::discovery::DiscoverRequest {
+            dev: Id16::random(),
+            pv: 99,
+        })
+        .unwrap();
     sock.send_to(&bad_version, target).await.unwrap();
     bad_version[4] = 77; // versi wire tak dikenal
     sock.send_to(&bad_version, target).await.unwrap();
@@ -668,4 +735,82 @@ async fn shutdown_closes_sessions_politely() {
         }
     }
     assert!(saw_bye);
+}
+
+// ---------------------------------------------------------- restart host
+
+/// `TokenStore` yang bisa dibagi dua instans host, meniru keyring OS yang bertahan antar proses.
+#[derive(Clone)]
+struct SharedStore(Arc<Mutex<tab_host::MemoryTokenStore>>);
+
+impl tab_host::TokenStore for SharedStore {
+    fn keypair(&self) -> Result<tab_protocol::noise::StaticKeypair, tab_host::StoreError> {
+        self.0.lock().unwrap().keypair()
+    }
+    fn devices(&self) -> Result<Vec<tab_host::DeviceEntry>, tab_host::StoreError> {
+        self.0.lock().unwrap().devices()
+    }
+    fn upsert(&mut self, e: &tab_host::DeviceEntry) -> Result<(), tab_host::StoreError> {
+        self.0.lock().unwrap().upsert(e)
+    }
+    fn remove(&mut self, d: Id16) -> Result<(), tab_host::StoreError> {
+        self.0.lock().unwrap().remove(d)
+    }
+}
+
+#[tokio::test]
+async fn host_restart_keeps_pairing_and_client_resumes_without_pin() {
+    let store = SharedStore(Arc::new(Mutex::new(tab_host::MemoryTokenStore::new())));
+    let mut deps = HostDeps::fakes();
+    deps.store = Box::new(store.clone());
+    let host = HostHandle::start(cfg(), deps).await.unwrap();
+    let port = host.session_addr().port();
+    let pk = host.public_key();
+    let hid = host.host_id();
+
+    // Pairing di host pertama.
+    let dev = Id16::random();
+    let ticket = host.begin_pairing().await.unwrap();
+    let mut c = Client::connect(
+        host.session_addr(),
+        &pk,
+        DeviceInfo::probe(dev),
+        Credential::Pair,
+    )
+    .await
+    .unwrap();
+    assert!(matches!(
+        c.hello().await.unwrap(),
+        Outcome::PairRequired { .. }
+    ));
+    let PinOutcome::Paired { token, .. } = c.submit_pin(&ticket.pin).await.unwrap() else {
+        panic!("pairing gagal");
+    };
+
+    // Host mati (sesi hidup diputus sopan), lalu hidup lagi di port yang sama.
+    host.shutdown().await.unwrap();
+    let mut saw_close = false;
+    while let Ok(m) = c.recv_timeout(Duration::from_secs(2)).await {
+        saw_close |= matches!(m, Message::Bye(_));
+    }
+    assert!(saw_close, "sesi lama harus ditutup dengan Bye");
+
+    let mut cfg2 = cfg();
+    cfg2.session_port = port;
+    let mut deps2 = HostDeps::fakes();
+    deps2.store = Box::new(store);
+    let host2 = HostHandle::start(cfg2, deps2).await.unwrap();
+    assert_eq!(host2.public_key(), pk, "kunci host stabil antar restart");
+    assert_eq!(host2.host_id(), hid);
+
+    // Client memakai token lama: tanpa PIN, tanpa pairing ulang.
+    let mut again = Client::connect(
+        host2.session_addr(),
+        &pk,
+        DeviceInfo::probe(dev),
+        Credential::Resume(token),
+    )
+    .await
+    .unwrap();
+    assert!(matches!(again.hello().await.unwrap(), Outcome::Welcome(_)));
 }

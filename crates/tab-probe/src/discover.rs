@@ -64,7 +64,11 @@ pub async fn discover_at(
             sends += 1;
             next_send += Duration::from_millis(300);
         }
-        let wake = if sends < 3 { next_send.min(deadline) } else { deadline };
+        let wake = if sends < 3 {
+            next_send.min(deadline)
+        } else {
+            deadline
+        };
         match tokio::time::timeout_at(wake, sock.recv_from(&mut buf)).await {
             Ok(Ok((n, from))) => {
                 if let Ok(Datagram::Response(res)) = discovery::decode(&buf[..n]) {

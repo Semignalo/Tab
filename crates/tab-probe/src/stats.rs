@@ -50,7 +50,10 @@ mod tests {
     fn percentiles_use_nearest_rank() {
         let data: Vec<f64> = (1..=100).map(|x| x as f64).collect();
         let s = summarize(&data).unwrap();
-        assert_eq!((s.p50, s.p95, s.p99, s.max, s.min), (50.0, 95.0, 99.0, 100.0, 1.0));
+        assert_eq!(
+            (s.p50, s.p95, s.p99, s.max, s.min),
+            (50.0, 95.0, 99.0, 100.0, 1.0)
+        );
     }
 
     #[test]

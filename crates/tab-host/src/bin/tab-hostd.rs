@@ -53,6 +53,7 @@ async fn main() {
     cfg.os_version = sysinfo::System::os_version().unwrap_or_else(|| "unknown".into());
     cfg.lyrics_dir = arg_value("--lyrics").map(PathBuf::from);
 
+    let obs = std::sync::Arc::new(tab_deck::ObsHandle::new());
     let profiles = JsonProfileStore::open(config_dir().join("profiles"))
         .expect("folder profil deck tidak bisa dibuka");
     let deps = HostDeps {
@@ -61,23 +62,34 @@ async fn main() {
         metrics: Box::new(tab_metrics::SysMetrics::new()),
         media: tab_media::platform_media(),
         deck: Box::new(profiles),
-        runner: Box::new(system_runner(tab_input::platform_input())),
+        runner: Box::new(system_runner(tab_input::platform_input()).with_obs(obs.clone())),
         store: token_store(),
+        obs,
     };
 
     let host = match HostHandle::start(cfg.clone(), deps).await {
         Ok(h) => h,
         Err(e) => {
             eprintln!("host gagal start: {e}");
-            eprintln!("(port {} / {} sudah dipakai? satu host per mesin)", cfg.discovery_port, cfg.session_port);
+            eprintln!(
+                "(port {} / {} sudah dipakai? satu host per mesin)",
+                cfg.discovery_port, cfg.session_port
+            );
             std::process::exit(1);
         }
     };
 
     println!("Tab host '{}' aktif", cfg.name);
-    println!("  discovery UDP {}, sesi TCP {}", host.discovery_addr().port(), host.session_addr().port());
+    println!(
+        "  discovery UDP {}, sesi TCP {}",
+        host.discovery_addr().port(),
+        host.session_addr().port()
+    );
     println!("  host id     {}", host.host_id());
-    println!("  fingerprint {}", tab_protocol::noise::hex(&host.fingerprint())[..16].to_owned());
+    println!(
+        "  fingerprint {}",
+        tab_protocol::noise::hex(&host.fingerprint())[..16].to_owned()
+    );
     println!("  mode: {:?}", host.capabilities().modes);
     println!("Windows: izinkan 'Private network' saat dialog Firewall muncul, atau HP tidak akan menemukan host.");
     println!("Ketik `p` + Enter untuk membuat PIN pairing.\n");
@@ -90,14 +102,23 @@ async fn main() {
     tokio::spawn(async move {
         while let Ok(ev) = events.recv().await {
             match ev {
-                HostEvent::PairingSucceeded { name, .. } => println!("✔ perangkat dipasangkan: {name}"),
-                HostEvent::PairingFailed { reason, attempts_left } => {
+                HostEvent::PairingSucceeded { name, .. } => {
+                    println!("✔ perangkat dipasangkan: {name}")
+                }
+                HostEvent::PairingFailed {
+                    reason,
+                    attempts_left,
+                } => {
                     println!("✘ pairing gagal: {reason} (sisa {attempts_left})")
                 }
                 HostEvent::PairingEnded => println!("(jendela pairing ditutup)"),
                 HostEvent::DeviceConnected { name, .. } => println!("→ tersambung: {name}"),
-                HostEvent::DeviceDisconnected { device } => println!("← terputus: {}", &device.to_hex()[..8]),
-                HostEvent::DeviceRevoked { device } => println!("⊘ dicabut: {}", &device.to_hex()[..8]),
+                HostEvent::DeviceDisconnected { device } => {
+                    println!("← terputus: {}", &device.to_hex()[..8])
+                }
+                HostEvent::DeviceRevoked { device } => {
+                    println!("⊘ dicabut: {}", &device.to_hex()[..8])
+                }
                 HostEvent::ModeChanged { device, mode } => {
                     println!("  {} → mode {:?}", &device.to_hex()[..8], mode)
                 }
@@ -147,7 +168,11 @@ async fn main() {
 
 async fn print_pin(host: &HostHandle) {
     match host.begin_pairing().await {
-        Ok(t) => println!("\n  PIN PAIRING: {}   (berlaku {} detik)\n", t.pin, t.ttl.as_secs()),
+        Ok(t) => println!(
+            "\n  PIN PAIRING: {}   (berlaku {} detik)\n",
+            t.pin,
+            t.ttl.as_secs()
+        ),
         Err(e) => println!("gagal: {e}"),
     }
 }

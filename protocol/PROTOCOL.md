@@ -1,8 +1,14 @@
 # Tab Wire Protocol — v1
 
 Sumber kebenaran untuk kedua sisi implementasi (host Rust, client Kotlin).
-Setiap perubahan pada dokumen ini harus diikuti perubahan di `host/src-tauri/src/transport/`
-dan `client-android/core/model/`, plus fixture di `protocol/fixtures/`.
+Setiap perubahan pada dokumen ini harus diikuti perubahan di `crates/tab-protocol/`
+(sisi Rust, dipakai `tab-host` dan `tab-probe`) dan `client-android/core/model/`, plus fixture
+di `protocol/fixtures/`.
+
+**Amandemen setelah beku (Fase 0):** A1 preamble koneksi (§4), A2 field `pk` pada
+`DiscoverResponse` (§2), A3–A5 klarifikasi perilaku (§7). A1 dan A2 menutup celah nyata yang
+ditemukan saat implementasi (host tidak bisa memilih token PSK tanpa tahu perangkatnya; client
+tidak bisa menjalankan `Noise_NK` hanya dengan hash kunci). Keduanya aditif.
 
 Protokol ini milik project Tab sendiri dan **tidak** dirancang kompatibel dengan produk lain.
 
@@ -73,6 +79,7 @@ Client mengirim ke alamat broadcast subnet setiap antarmuka aktif (bukan hanya
 | `pmax` | uint | Versi protokol maksimum yang diterima |
 | `port` | uint | Port TCP sesi |
 | `fp` | bytes(32) | BLAKE2s dari static public key X25519 host |
+| `pk` | bytes(32) | Static public key X25519 host. **Wajib** diverifikasi client: `BLAKE2s(pk) == fp`, kalau tidak balasan dibuang. Kunci inilah yang dipakai handshake `Noise_NK`. *(amandemen A2)* |
 | `known` | bool | `true` bila `dev` sudah terpasang token di host ini |
 
 Aturan host:
@@ -124,8 +131,29 @@ disimpan di keyring OS. Fingerprint-nya (`fp`) disiarkan lewat discovery dan **d
 | Resume (sudah punya token) | `Noise_NKpsk2_25519_ChaChaPoly_BLAKE2s`, `psk` = token 32 byte |
 
 `NK` berarti client sudah mengetahui static key host di muka, jadi host terautentikasi
-terhadap kunci yang dipin. Pada koneksi pertama kunci itu baru berasal dari discovery yang
-bisa dipalsukan — **PIN-lah yang menutup celah itu**, karena PIN hanya tampil di layar host.
+terhadap kunci yang dipin. Pada koneksi pertama kunci itu baru berasal dari discovery (`pk`)
+yang bisa dipalsukan — **PIN-lah yang menutup celah itu**, karena PIN hanya tampil di layar host.
+Setelah pairing, client menyimpan `pk` dan **menolak** host yang menjawab dengan kunci lain
+untuk `hid` yang sama (lihat `KeyChanged` di client).
+
+### Preamble koneksi *(amandemen A1)*
+
+Frame TCP **pertama** dari client, sebelum pesan handshake Noise, berisi 17 byte:
+
+| Byte | Isi |
+|---|---|
+| 0 | `intent`: `0x01` = pairing (`Noise_NK`), `0x02` = resume (`Noise_NKpsk2`) |
+| 1..17 | `device_id` (16 byte) |
+
+Alasan: `NKpsk2` butuh token perangkat sebagai PSK *sebelum* host menulis pesan handshake
+kedua, sedangkan pesan handshake pertama tidak membawa identitas apa pun — tanpa preamble host
+tidak tahu token milik siapa yang harus dipakai. `device_id` sudah disiarkan telanjang lewat
+discovery, jadi ini tidak membuka informasi baru.
+
+Aturan host: preamble rusak → tutup diam-diam. `intent = resume` untuk perangkat yang tidak
+dikenal (token dicabut) → tutup diam-diam; client menganggapnya "harus pairing ulang".
+Urutan frame berikutnya: handshake pesan 1 (client), handshake pesan 2 (host), lalu frame
+terenkripsi.
 
 `NKpsk2` mengikat token ke handshake, sehingga token tidak pernah dikirim sebagai payload dan
 tidak bisa diputar ulang ke host lain.
@@ -234,13 +262,13 @@ Host hanya mengirim telemetri untuk mode yang aktif pada sesi itu.
 
 ### Bye / Error
 `Bye{r: text}` — penutupan sopan dari kedua sisi.
-`Error{c: text, msg: text, extra?: map}` dengan `c` salah satu:
+`Error{c: text, msg: text, attempts_left?: uint}` (`attempts_left` hanya untuk `PinInvalid`) dengan `c` salah satu:
 
 | Kode | Arti |
 |---|---|
 | `ProtocolUnsupported` | versi di luar `[pmin, pmax]` |
 | `PairRequired` | perlu pairing |
-| `PinInvalid` | PIN salah (`extra.attempts_left`) |
+| `PinInvalid` | PIN salah (`attempts_left`; `0` = PIN dibatalkan, host menutup sesi) |
 | `PinExpired` | PIN kedaluwarsa atau sudah terpakai |
 | `PairingBusy` | tidak ada sesi pairing yang terbuka di host |
 | `TokenRevoked` | token dicabut user |
@@ -272,6 +300,13 @@ mentah — ini yang mencegah scroll dua jari salah terbaca sebagai klik.
 | `Key` | `k`: text (nama tombol kanonik, §8), `d`: bool |
 | `Text` | `s`: text — hasil IME, dikirim utuh bukan per tombol |
 | `Modifiers` | `m`: uint bitflag — `1` shift, `2` ctrl, `4` alt, `8` meta |
+
+Arti `dx`/`dy` pada `Scroll` *(klarifikasi A3)*: arah **gerak jari** di layar (positif = ke
+kanan/ke bawah), bukan arah roda. Host mengubahnya menjadi nilai roda sesuai setelan
+Natural/Inverted: natural → konten mengikuti jari (jari turun → konten turun); inverted →
+sebaliknya. `mom = true` menandai event inersia yang disintesis client setelah jari diangkat;
+urutannya `b` → `u`… → `e` (jari) lalu `u`… → `e` dengan `mom = true`. `PointerMove` diskalakan
+oleh `sens` di host; `Scroll` tidak.
 
 Arah scroll (Natural/Inverted) dan sensitivitas adalah **setelan host**, dikirim ke client
 lewat `InputSettings{sens: float, natural: bool}` supaya konsisten di semua perangkat, dan
@@ -317,6 +352,11 @@ host mengirim `Metrics` berkala:
 
 Field suhu/GPU dihilangkan sepenuhnya bila tidak tersedia. Tidak ada nilai placeholder.
 
+Host mengirim `Metrics` **hanya** bila sesi sedang di mode `monitor` *dan* sudah
+`SubscribeTelemetry` dengan `metrics`; pindah mode menghentikan aliran, dan
+`SubscribeTelemetry{kinds: [], ..}` membatalkan langganan. Client memulihkan langganan setelah
+reconnect *(klarifikasi A4)*.
+
 ### 7.4 Music & Lyrics
 
 Host → client:
@@ -332,6 +372,13 @@ Client → host:
 
 `pos` dikirim ulang paling sering 1 Hz; client melakukan interpolasi lokal agar timeline dan
 baris lirik bergerak halus tanpa menambah trafik.
+
+Klarifikasi A5: `NowPlaying` dikirim host secara otomatis 1 Hz selama sesi di mode `music`
+(tanpa `SubscribeTelemetry`), dan segera setelah `MediaCommand`/`MediaSeek`. `GetLyrics{id}`:
+host menjawab untuk lagu yang **sedang diputar** dan memantulkan `id` apa adanya (client
+memakai `art` bila ada, selain itu `"current"`); bila tidak ada `.lrc` yang cocok host membalas
+`Error{Unsupported}`. `GetArtwork` dengan id yang tidak dikenal → `Error{Unsupported}`.
+Chunk artwork ≤ 7000 byte data, dikirim dengan prioritas terendah.
 
 Lirik berasal dari file `.lrc` milik user di folder yang ia tentukan sendiri di host.
 Host **tidak** mengambil lirik dari layanan pihak ketiga.

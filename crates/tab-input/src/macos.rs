@@ -109,7 +109,12 @@ fn modifier_flag(key: Key) -> Option<CGEventFlags> {
 }
 
 impl MacInput {
-    fn post_mouse(&self, ty: CGEventType, at: CGPoint, btn: CGMouseButton) -> Result<(), InputError> {
+    fn post_mouse(
+        &self,
+        ty: CGEventType,
+        at: CGPoint,
+        btn: CGMouseButton,
+    ) -> Result<(), InputError> {
         let ev = CGEvent::new_mouse_event(source()?, ty, at, btn)
             .map_err(|_| InputError::Os("event mouse gagal dibuat".into()))?;
         ev.set_flags(self.flags);
@@ -197,8 +202,15 @@ impl PlatformInput for MacInput {
     ) -> Result<(), InputError> {
         // Satuan piksel supaya scroll halus di trackpad-style app; `dy` sudah berupa nilai
         // roda (positif = konten turun) dan CGEvent memakai konvensi yang sama.
-        let ev = CGEvent::new_scroll_event(source()?, ScrollEventUnit::PIXEL, 2, dy as i32, dx as i32, 0)
-            .map_err(|_| InputError::Os("event scroll gagal dibuat".into()))?;
+        let ev = CGEvent::new_scroll_event(
+            source()?,
+            ScrollEventUnit::PIXEL,
+            2,
+            dy as i32,
+            dx as i32,
+            0,
+        )
+        .map_err(|_| InputError::Os("event scroll gagal dibuat".into()))?;
         ev.post(CGEventTapLocation::HID);
         Ok(())
     }

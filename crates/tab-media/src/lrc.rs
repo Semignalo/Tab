@@ -171,7 +171,10 @@ mod tests {
         std::fs::write(dir.join("ARTIS - JUDUL.LRC"), "[00:01.00]b").unwrap();
 
         let found = find_lrc(&dir, "Artis", "Judul").unwrap();
-        assert!(found.to_string_lossy().to_lowercase().contains("artis - judul"));
+        assert!(found
+            .to_string_lossy()
+            .to_lowercase()
+            .contains("artis - judul"));
         let title_only = find_lrc(&dir, "Lain", "judul").unwrap();
         assert!(title_only.ends_with("Judul.lrc"));
         assert!(find_lrc(&dir, "Artis", "Tidak Ada").is_none());

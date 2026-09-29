@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  rust:
+    name: Rust (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --all --check
+      # macOS: input (CGEvent) dan izin Accessibility hanya bisa dikompilasi di sini.
+      - run: cargo clippy --workspace --all-targets -- -D warnings
+      - run: cargo test --workspace
+
+  android:
+    # Windows karena uji lintas-bahasa memerlukan host Rust asli (tab-testhost) dan input
+    # Windows sudah terverifikasi di sana; uji live tidak boleh diam-diam dilewati.
+    name: Android (JVM tests + APK)
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: Bangun host uji
+        run: cargo build -p tab-host --bins
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Test JVM (termasuk kontrak fixture + uji live terhadap host Rust)
+        working-directory: client-android
+        run: ./gradlew test testDebugUnitTest --console=plain
+      - name: Bangun APK debug
+        working-directory: client-android
+        run: ./gradlew :app:assembleDebug --console=plain
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tab-android-debug
+          path: client-android/app/build/outputs/apk/debug/*.apk

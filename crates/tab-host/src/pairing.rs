@@ -12,7 +12,9 @@ use tab_protocol::{PIN_DIGITS, PIN_MAX_ATTEMPTS, PIN_TTL};
 pub enum Verify {
     Ok,
     /// PIN salah; `attempts_left == 0` berarti PIN dibatalkan dan tidak berlaku lagi.
-    Invalid { attempts_left: u8 },
+    Invalid {
+        attempts_left: u8,
+    },
     /// Tidak ada PIN aktif: kedaluwarsa, sudah terpakai, habis percobaan, atau dibatalkan.
     Expired,
 }
@@ -112,7 +114,10 @@ mod tests {
         assert!(pins
             .iter()
             .all(|s| s.len() == 6 && s.chars().all(|c| c.is_ascii_digit())));
-        assert!(pins.iter().any(|s| *s != pins[0]), "PIN tidak boleh konstan");
+        assert!(
+            pins.iter().any(|s| *s != pins[0]),
+            "PIN tidak boleh konstan"
+        );
     }
 
     #[test]
@@ -133,7 +138,9 @@ mod tests {
         for left in (0..5u8).rev() {
             assert_eq!(
                 p.verify(wrong, now),
-                Verify::Invalid { attempts_left: left }
+                Verify::Invalid {
+                    attempts_left: left
+                }
             );
         }
         // PIN yang benar pun sudah tidak berguna setelah dibatalkan.

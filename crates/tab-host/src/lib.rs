@@ -11,7 +11,7 @@ mod session;
 pub mod store;
 
 pub use registry::Registry;
-pub use store::{DeviceEntry, MemoryTokenStore, StoreError, TokenStore};
+pub use store::{secret_get, secret_set, DeviceEntry, MemoryTokenStore, StoreError, TokenStore};
 
 #[cfg(any(windows, target_os = "macos"))]
 pub use store::KeyringTokenStore;
@@ -20,7 +20,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant};
-use tab_deck::{ActionRunner, ProfileStore};
+use tab_deck::{ActionRunner, ObsHandle, ProfileStore};
 use tab_input::{Clipboard, PlatformInput};
 use tab_media::MediaSource;
 use tab_metrics::MetricsSource;
@@ -83,6 +83,8 @@ pub struct HostDeps {
     pub deck: Box<dyn ProfileStore>,
     pub runner: Box<dyn ActionRunner>,
     pub store: Box<dyn TokenStore>,
+    /// Pegangan OBS bersama runner; `caps.obs` hanya true bila OBS menjawab saat `Welcome`.
+    pub obs: Arc<ObsHandle>,
 }
 
 impl HostDeps {
@@ -96,21 +98,41 @@ impl HostDeps {
             deck: Box::new(tab_deck::MemoryProfileStore::with_starter()),
             runner: Box::new(tab_deck::RecordingRunner::default()),
             store: Box::new(MemoryTokenStore::new()),
+            obs: Arc::new(ObsHandle::new()),
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum HostEvent {
-    PairingStarted { pin: String, ttl_ms: u32 },
-    PairingSucceeded { device: Id16, name: String },
-    PairingFailed { reason: String, attempts_left: u8 },
+    PairingStarted {
+        pin: String,
+        ttl_ms: u32,
+    },
+    PairingSucceeded {
+        device: Id16,
+        name: String,
+    },
+    PairingFailed {
+        reason: String,
+        attempts_left: u8,
+    },
     /// PIN kedaluwarsa, habis percobaan, atau dibatalkan — UI perlu menutup dialognya.
     PairingEnded,
-    DeviceConnected { device: Id16, name: String },
-    DeviceDisconnected { device: Id16 },
-    DeviceRevoked { device: Id16 },
-    ModeChanged { device: Id16, mode: Mode },
+    DeviceConnected {
+        device: Id16,
+        name: String,
+    },
+    DeviceDisconnected {
+        device: Id16,
+    },
+    DeviceRevoked {
+        device: Id16,
+    },
+    ModeChanged {
+        device: Id16,
+        mode: Mode,
+    },
 }
 
 /// Hasil `begin_pairing`: PIN untuk ditampilkan ke user.
@@ -147,7 +169,10 @@ pub(crate) struct Shared {
     pub events: broadcast::Sender<HostEvent>,
     pub settings: watch::Sender<InputSettings>,
     pub caps: Capabilities,
+    pub obs: Arc<ObsHandle>,
     pub start: Instant,
+    /// Folder .lrc milik user; dapat diganti saat host berjalan.
+    pub lyrics_dir: Mutex<Option<PathBuf>>,
     /// Jumlah sesi yang sudah lolos Welcome; dipakai untuk memutuskan `release_all`.
     pub live_sessions: Mutex<usize>,
 }
@@ -217,6 +242,7 @@ impl HostHandle {
         let deck_ok = deps.deck.list().map(|l| !l.is_empty()).unwrap_or(false);
         let caps = build_caps(&deps, deck_ok);
         let max_sessions = cfg.max_sessions;
+        let lyrics_dir = cfg.lyrics_dir.clone();
 
         let (events, _) = broadcast::channel(64);
         let (settings, _) = watch::channel(InputSettings {
@@ -240,7 +266,9 @@ impl HostHandle {
             events,
             settings,
             caps,
+            obs: deps.obs,
             start: Instant::now(),
+            lyrics_dir: Mutex::new(lyrics_dir),
             live_sessions: Mutex::new(0),
         });
 
@@ -321,6 +349,11 @@ impl HostHandle {
         self.shared.registry.revoke(device)?;
         self.shared.emit(HostEvent::DeviceRevoked { device });
         Ok(())
+    }
+
+    /// Ganti folder lirik saat host berjalan (`None` mematikan fitur lirik).
+    pub fn set_lyrics_dir(&self, dir: Option<PathBuf>) {
+        *self.shared.lyrics_dir.lock().unwrap() = dir;
     }
 
     /// Setelan input global (sensitivitas, arah scroll) — dipancarkan ke semua sesi.

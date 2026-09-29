@@ -105,7 +105,10 @@ mod tests {
         let t0 = Instant::now();
         assert!(rl.allow(a, t0));
         assert!(!rl.allow(a, t0 + Duration::from_millis(100)));
-        assert!(rl.allow(b, t0 + Duration::from_millis(100)), "alamat lain bebas");
+        assert!(
+            rl.allow(b, t0 + Duration::from_millis(100)),
+            "alamat lain bebas"
+        );
         assert!(rl.allow(a, t0 + Duration::from_millis(250)));
     }
 

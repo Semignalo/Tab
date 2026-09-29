@@ -39,7 +39,13 @@ fn send(inputs: &[INPUT]) -> Result<(), InputError> {
         return Ok(());
     }
     // SAFETY: `inputs` adalah slice INPUT valid dan ukuran struct diberikan apa adanya.
-    let sent = unsafe { SendInput(inputs.len() as u32, inputs.as_ptr(), size_of::<INPUT>() as i32) };
+    let sent = unsafe {
+        SendInput(
+            inputs.len() as u32,
+            inputs.as_ptr(),
+            size_of::<INPUT>() as i32,
+        )
+    };
     if sent as usize != inputs.len() {
         return Err(InputError::Os(format!(
             "SendInput hanya menerima {sent} dari {} event (jendela dengan hak lebih tinggi?)",

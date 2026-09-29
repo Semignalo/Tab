@@ -77,7 +77,12 @@ impl ProbeStore {
     }
 }
 
-pub fn record(token: &[u8; 32], pk: &[u8; 32], addr: std::net::SocketAddr, name: &str) -> HostRecord {
+pub fn record(
+    token: &[u8; 32],
+    pk: &[u8; 32],
+    addr: std::net::SocketAddr,
+    name: &str,
+) -> HostRecord {
     HostRecord {
         token: hex(token),
         public_key: hex(pk),

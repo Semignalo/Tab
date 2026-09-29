@@ -10,7 +10,9 @@ use tab_input::PlatformInput;
 use tab_protocol::message::{DeckButton, DeckProfile};
 use thiserror::Error;
 
+pub mod obs;
 mod runner;
+pub use obs::{ObsConfig, ObsError, ObsHandle};
 pub use runner::SystemRunner;
 
 #[derive(Debug, Error)]
@@ -227,8 +229,8 @@ impl ProfileStore for JsonProfileStore {
         let path = self.path(id)?;
         match std::fs::read_to_string(path) {
             Ok(text) => {
-                let p: Profile = serde_json::from_str(&text)
-                    .map_err(|e| ActionError::Invalid(e.to_string()))?;
+                let p: Profile =
+                    serde_json::from_str(&text).map_err(|e| ActionError::Invalid(e.to_string()))?;
                 p.validate()?;
                 Ok(Some(p))
             }
@@ -240,8 +242,8 @@ impl ProfileStore for JsonProfileStore {
     fn save(&mut self, profile: &Profile) -> Result<(), ActionError> {
         profile.validate()?;
         let path = self.path(&profile.id)?;
-        let json = serde_json::to_string_pretty(profile)
-            .map_err(|e| ActionError::Store(e.to_string()))?;
+        let json =
+            serde_json::to_string_pretty(profile).map_err(|e| ActionError::Store(e.to_string()))?;
         // Tulis ke file sementara lalu rename: crash di tengah tulis tidak merusak profil lama.
         let tmp = path.with_extension("json.tmp");
         std::fs::write(&tmp, json).map_err(|e| ActionError::Store(e.to_string()))?;

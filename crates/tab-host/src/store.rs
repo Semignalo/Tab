@@ -159,11 +159,7 @@ mod keyring_store {
     }
 
     fn write_index(ids: &[Id16]) -> Result<(), StoreError> {
-        let text = ids
-            .iter()
-            .map(|i| i.to_hex())
-            .collect::<Vec<_>>()
-            .join(",");
+        let text = ids.iter().map(|i| i.to_hex()).collect::<Vec<_>>().join(",");
         write(INDEX, text.as_bytes())
     }
 
@@ -202,8 +198,8 @@ mod keyring_store {
                 let Some(raw) = read(&device_user(id))? else {
                     continue;
                 };
-                let s: Stored = serde_json::from_slice(&raw)
-                    .map_err(|e| StoreError::Corrupt(e.to_string()))?;
+                let s: Stored =
+                    serde_json::from_slice(&raw).map_err(|e| StoreError::Corrupt(e.to_string()))?;
                 let token: [u8; 32] = decode_hex32(&s.token)
                     .ok_or_else(|| StoreError::Corrupt("token tidak sah".into()))?;
                 out.push(DeviceEntry {
@@ -255,6 +251,41 @@ mod keyring_store {
         }
         Some(out)
     }
+}
+
+/// Rahasia kecil lain (mis. password OBS) di keyring OS; tidak pernah ditulis ke berkas biasa.
+#[cfg(any(windows, target_os = "macos"))]
+pub fn secret_get(name: &str) -> Option<String> {
+    let entry = keyring::Entry::new("app.tab.host", &format!("secret:{name}")).ok()?;
+    entry.get_password().ok()
+}
+
+/// `None` menghapus rahasia.
+#[cfg(any(windows, target_os = "macos"))]
+pub fn secret_set(name: &str, value: Option<&str>) -> Result<(), StoreError> {
+    let entry = keyring::Entry::new("app.tab.host", &format!("secret:{name}"))
+        .map_err(|e| StoreError::Backend(e.to_string()))?;
+    match value {
+        Some(v) => entry
+            .set_password(v)
+            .map_err(|e| StoreError::Backend(e.to_string())),
+        None => match entry.delete_credential() {
+            Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+            Err(e) => Err(StoreError::Backend(e.to_string())),
+        },
+    }
+}
+
+#[cfg(not(any(windows, target_os = "macos")))]
+pub fn secret_get(_name: &str) -> Option<String> {
+    None
+}
+
+#[cfg(not(any(windows, target_os = "macos")))]
+pub fn secret_set(_name: &str, _value: Option<&str>) -> Result<(), StoreError> {
+    Err(StoreError::Backend(
+        "platform ini belum punya keyring".into(),
+    ))
 }
 
 #[cfg(test)]
